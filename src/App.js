@@ -1,6 +1,19 @@
 import React, { useState } from "react";
 import "./index.css";
 
+// Optional: map your asset symbols to TradingView symbols
+const symbolToTVFormat = (symbol) => {
+  const map = {
+    "Boom 1000": "OANDA:XAUUSD",
+    "Boom 500": "OANDA:GBPUSD",
+    "Crash 1000": "OANDA:USDJPY",
+    "Crash 500": "OANDA:EURUSD",
+    "Volatility 75 Index": "BINANCE:BTCUSDT",
+    "Volatility 100 Index": "BINANCE:ETHUSDT"
+  };
+  return map[symbol] || "OANDA:EURUSD"; // fallback
+};
+
 function App() {
   const [signal, setSignal] = useState(null);
   const [history, setHistory] = useState([]);
@@ -29,11 +42,15 @@ function App() {
       });
 
       const data = await response.json();
-      const newSignal = data.signal;
 
-      if (newSignal) {
+      const newSignal = {
+        ...data.signal,
+        timestamp: new Date().toLocaleString(), // 🕓 Add timestamp here
+      };
+
+      if (data.signal) {
         setSignal(newSignal);
-        setHistory((prev) => [newSignal, ...prev.slice(0, 4)]); // keep max 5
+        setHistory((prev) => [newSignal, ...prev.slice(0, 4)]); // Keep latest 5 signals
       } else {
         setSignal(null);
       }
@@ -51,7 +68,7 @@ function App() {
         📊 AI Forex Signal Dashboard
       </h1>
 
-      {/* Symbol Selector */}
+      {/* 🔘 Symbol Dropdown */}
       <div className="mb-4">
         <label className="mr-2 font-semibold">Select Symbol:</label>
         <select
@@ -67,7 +84,7 @@ function App() {
         </select>
       </div>
 
-      {/* Refresh Button */}
+      {/* 🔄 Refresh Button */}
       <button
         onClick={fetchSignal}
         className="mb-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -75,7 +92,7 @@ function App() {
         🔄 Refresh Signal
       </button>
 
-      {/* Current Signal */}
+      {/* 📍 Current Signal */}
       {loading && <p className="text-gray-500">Fetching signal...</p>}
 
       {signal && (
@@ -85,7 +102,7 @@ function App() {
         </div>
       )}
 
-      {/* Signal History */}
+      {/* 🕘 Signal History */}
       {history.length > 1 && (
         <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md">
           <h2 className="text-lg font-semibold mb-4 text-gray-700">🕘 Recent Signals</h2>
@@ -100,10 +117,10 @@ function App() {
   );
 }
 
-// ✅ Simple card component to display a signal
+// ✅ COMPONENT: Renders a single signal card with chart + timestamp
 function SignalCard({ signal }) {
   return (
-    <div className="border border-gray-200 rounded-lg p-4 text-sm">
+    <div className="border border-gray-200 rounded-lg p-4 text-sm space-y-1">
       <p><strong>Symbol:</strong> {signal.symbol}</p>
       <p><strong>HTF:</strong> {signal.timeframe_htf}</p>
       <p><strong>LTF:</strong> {signal.timeframe_ltf}</p>
@@ -113,6 +130,22 @@ function SignalCard({ signal }) {
       <p><strong>SL:</strong> {signal.sl}</p>
       <p><strong>TP:</strong> {signal.tp}</p>
       <p><strong>Confidence:</strong> {signal.confidence}%</p>
+      <p><strong>Generated:</strong> {signal.timestamp}</p>
+
+      {/* 📈 Chart Preview */}
+      <div className="mt-4">
+        <iframe
+          src={`https://www.tradingview.com/widgetembed/?symbol=${symbolToTVFormat(
+            signal.symbol
+          )}&interval=15&hidesidetoolbar=1&theme=light`}
+          width="100%"
+          height="300"
+          frameBorder="0"
+          allowTransparency="true"
+          scrolling="no"
+          title="Chart Preview"
+        ></iframe>
+      </div>
     </div>
   );
 }
