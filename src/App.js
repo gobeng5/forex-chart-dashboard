@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 
-// 📊 TradingView chart symbol mapping
+// ✅ TradingView chart mapping (for display only)
 const symbolToTVFormat = (symbol) => {
   const map = {
     "Boom 1000": "OANDA:XAUUSD",
@@ -16,13 +16,13 @@ const symbolToTVFormat = (symbol) => {
   return map[symbol] || "OANDA:EURUSD";
 };
 
-// 🧠 Deriv WebSocket symbol mapping
+// ✅ Deriv WebSocket symbol mapping (real API feed)
 const mapToDerivSymbol = (symbol) => {
   const map = {
-    "Boom 1000": "R_100",
-    "Boom 500": "R_50",
-    "Crash 1000": "R_100",
-    "Crash 500": "R_50",
+    "Boom 1000": "BOOM1000",
+    "Boom 500": "BOOM500",
+    "Crash 1000": "CRASH1000",
+    "Crash 500": "CRASH500",
     "Volatility 75 Index": "R_75",
     "Volatility 25 Index": "R_25",
     "Volatility 10 Index": "R_10",
@@ -50,7 +50,7 @@ function App() {
     "Volatility 100 Index"
   ];
 
-  // 📡 Connect to Deriv WebSocket on symbol change
+  // ✅ WebSocket for Deriv live prices
   useEffect(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -68,6 +68,7 @@ function App() {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log("🛰️ Tick received:", data);
       if (data.tick) {
         setLivePrice(data.tick.quote);
       }
@@ -82,7 +83,7 @@ function App() {
     };
   }, [symbol]);
 
-  // 🔄 Generate signal using live price
+  // 🔄 Fetch signal using live price
   const fetchSignal = async () => {
     if (!livePrice) {
       alert("Live price not available yet. Please wait a moment and try again.");
@@ -150,7 +151,7 @@ function App() {
         </p>
       )}
 
-      {/* 🔄 Refresh Button (enabled always) */}
+      {/* 🔄 Refresh Button */}
       <button
         onClick={fetchSignal}
         className="mb-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -183,7 +184,7 @@ function App() {
   );
 }
 
-// 📦 Signal Card Component
+// 🧩 Reusable signal card component
 function SignalCard({ signal }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 text-sm space-y-1">
