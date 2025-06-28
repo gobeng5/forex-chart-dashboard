@@ -1,18 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 
-// ✅ TradingView chart mapping
+// ✅ TradingView symbol mapping (display only)
 const symbolToTVFormat = (symbol) => {
   const map = {
     "Volatility 75 Index": "BINANCE:BTCUSDT",
+    "Volatility 25 Index": "BINANCE:ADAUSDT",
+    "Volatility 10 Index": "BINANCE:SANDUSDT",
+    "Volatility 100 Index": "BINANCE:ETHUSDT",
+    "Boom 1000": "OANDA:XAUUSD",
+    "Boom 500": "OANDA:GBPUSD",
+    "Crash 1000": "OANDA:USDJPY",
+    "Crash 500": "OANDA:EURUSD"
   };
   return map[symbol] || "BINANCE:BTCUSDT";
 };
 
-// ✅ Deriv WebSocket symbol mapping
+// ✅ Deriv WebSocket symbol mapping (real API)
 const mapToDerivSymbol = (symbol) => {
   const map = {
-    "Volatility 75 Index": "R_75", // ✅ this one always works
+    "Volatility 75 Index": "R_75",
+    "Volatility 25 Index": "R_25",
+    "Volatility 10 Index": "R_10",
+    "Volatility 100 Index": "R_100",
+    "Boom 1000": "BOOM1000",
+    "Boom 500": "BOOM500",
+    "Crash 1000": "CRASH1000",
+    "Crash 500": "CRASH500"
   };
   return map[symbol] || "R_75";
 };
@@ -25,8 +39,19 @@ function App() {
   const [loading, setLoading] = useState(false);
   const wsRef = useRef(null);
 
-  const symbols = ["Volatility 75 Index"];
+  // ✅ Full symbol list for dropdown
+  const symbols = [
+    "Volatility 75 Index",
+    "Volatility 25 Index",
+    "Volatility 10 Index",
+    "Volatility 100 Index",
+    "Boom 1000",
+    "Boom 500",
+    "Crash 1000",
+    "Crash 500"
+  ];
 
+  // ✅ Connect to Deriv WebSocket on symbol change
   useEffect(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -65,6 +90,7 @@ function App() {
     };
   }, [symbol]);
 
+  // ✅ Fetch signal using current live price
   const fetchSignal = async () => {
     if (!livePrice) {
       alert("Live price not available yet. Please wait a moment and try again.");
