@@ -1,227 +1,40 @@
-import React, { useState, useEffect, useRef } from "react";
-import "./index.css";
-
-// ✅ TradingView symbol mapping (display only)
-const symbolToTVFormat = (symbol) => {
-  const map = {
-    "Volatility 75 Index": "BINANCE:BTCUSDT",
-    "Volatility 25 Index": "BINANCE:ADAUSDT",
-    "Volatility 10 Index": "BINANCE:SANDUSDT",
-    "Volatility 100 Index": "BINANCE:ETHUSDT",
-    "Boom 1000": "OANDA:XAUUSD",
-    "Boom 500": "OANDA:GBPUSD",
-    "Crash 1000": "OANDA:USDJPY",
-    "Crash 500": "OANDA:EURUSD"
-  };
-  return map[symbol] || "BINANCE:BTCUSDT";
-};
-
-// ✅ Deriv WebSocket symbol mapping (real API)
-const mapToDerivSymbol = (symbol) => {
-  const map = {
-    "Volatility 75 Index": "R_75",
-    "Volatility 25 Index": "R_25",
-    "Volatility 10 Index": "R_10",
-    "Volatility 100 Index": "R_100",
-    "Boom 1000": "BOOM1000",
-    "Boom 500": "BOOM500",
-    "Crash 1000": "CRASH1000",
-    "Crash 500": "CRASH500"
-  };
-  return map[symbol] || "R_75";
-};
+import React, { useEffect, useRef, useState } from "react";
 
 function App() {
-  const [signal, setSignal] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [symbol, setSymbol] = useState("Volatility 75 Index");
-  const [livePrice, setLivePrice] = useState(null);
-  const [loading, setLoading] = useState(false);
   const wsRef = useRef(null);
+  const [price, setPrice] = useState(null);
 
-  // ✅ Full symbol list for dropdown
-  const symbols = [
-    "Volatility 75 Index",
-    "Volatility 25 Index",
-    "Volatility 10 Index",
-    "Volatility 100 Index",
-    "Boom 1000",
-    "Boom 500",
-    "Crash 1000",
-    "Crash 500"
-  ];
-
-  // ✅ Connect to Deriv WebSocket on symbol change
   useEffect(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
-    const derivSymbol = mapToDerivSymbol(symbol);
     const ws = new WebSocket("wss://ws.derivws.com/websockets/v3");
 
     ws.onopen = () => {
-      console.log("🔌 Subscribing to Deriv symbol:", derivSymbol);
-      ws.send(JSON.stringify({
-        ticks: derivSymbol,
-        subscribe: 1
-      }));
+      console.log("🟢 Connected to Deriv. Subscribing to R_75...");
+      ws.send(JSON.stringify({ ticks: "R_75", subscribe: 1 }));
     };
 
-    ws.onmessage = (event) => {
-      console.log("🛰️ Raw tick event:", event.data);
-      const data = JSON.parse(event.data);
-      if (data.tick && data.tick.quote) {
-        console.log("✅ Tick received:", data.tick.quote);
-        setLivePrice(data.tick.quote);
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      console.log("📡 Tick received:", data);
+      if (data.tick?.quote) {
+        setPrice(data.tick.quote);
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("❌ WebSocket error:", err);
-    };
+    ws.onerror = (e) => console.error("❌ WebSocket error", e);
+    ws.onclose = () => console.warn("⚠️ WebSocket closed");
 
     wsRef.current = ws;
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [symbol]);
-
-  // ✅ Fetch signal using current live price
-  const fetchSignal = async () => {
-    if (!livePrice) {
-      alert("Live price not available yet. Please wait a moment and try again.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch("https://forex-chart-analyzer-1.onrender.com/generate-signal/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          symbol: symbol,
-          price: livePrice
-        }),
-      });
-
-      const data = await response.json();
-      const newSignal = {
-        ...data.signal,
-        timestamp: new Date().toLocaleString()
-      };
-
-      if (data.signal) {
-        setSignal(newSignal);
-        setHistory((prev) => [newSignal, ...prev.slice(0, 4)]);
-      } else {
-        setSignal(null);
-      }
-    } catch (error) {
-      console.error("❌ Fetch error:", error);
-      setSignal(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => ws.close();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
-      <h1 className="text-3xl font-bold text-blue-600 mb-4 flex items-center gap-2">
-        📊 AI Forex Signal Dashboard
-      </h1>
-
-      {/* 🔘 Symbol Dropdown */}
-      <div className="mb-2">
-        <label className="mr-2 font-semibold">Select Symbol:</label>
-        <select
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          className="p-2 rounded border bg-white"
-        >
-          {symbols.map((sym) => (
-            <option key={sym} value={sym}>
-              {sym}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* 📡 Live Price */}
-      {livePrice ? (
-        <p className="text-sm text-gray-600 mb-4">
-          🔴 Live Price: <span className="font-mono">{livePrice}</span>
-        </p>
+    <div className="p-8 text-center">
+      <h1 className="text-2xl font-bold text-blue-600">Deriv Tick Test</h1>
+      {price ? (
+        <p className="text-lg mt-4 text-green-600">Live Price: {price}</p>
       ) : (
-        <p className="text-sm text-red-600 mb-4">
-          ⏳ Waiting for live price from Deriv...
-        </p>
+        <p className="text-lg mt-4 text-red-600">Waiting for price...</p>
       )}
-
-      {/* 🔄 Refresh Button */}
-      <button
-        onClick={fetchSignal}
-        className="mb-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-      >
-        🔄 Refresh Signal
-      </button>
-
-      {/* 📍 Current Signal */}
-      {loading && <p className="text-gray-500">Fetching signal...</p>}
-
-      {signal && (
-        <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md mb-6">
-          <h2 className="text-xl font-semibold mb-2 text-gray-700">📍 Current Signal</h2>
-          <SignalCard signal={signal} />
-        </div>
-      )}
-
-      {/* 🕘 Signal History */}
-      {history.length > 1 && (
-        <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md">
-          <h2 className="text-lg font-semibold mb-4 text-gray-700">🕘 Recent Signals</h2>
-          <div className="space-y-4">
-            {history.slice(1).map((sig, index) => (
-              <SignalCard key={index} signal={sig} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ✅ Signal Card Component
-function SignalCard({ signal }) {
-  return (
-    <div className="border border-gray-200 rounded-lg p-4 text-sm space-y-1">
-      <p><strong>Symbol:</strong> {signal.symbol}</p>
-      <p><strong>HTF:</strong> {signal.timeframe_htf}</p>
-      <p><strong>LTF:</strong> {signal.timeframe_ltf}</p>
-      <p><strong>Direction:</strong> {signal.direction}</p>
-      <p><strong>Order Type:</strong> {signal.order_type}</p>
-      <p><strong>Entry:</strong> {signal.entry}</p>
-      <p><strong>SL:</strong> {signal.sl}</p>
-      <p><strong>TP:</strong> {signal.tp}</p>
-      <p><strong>Confidence:</strong> {signal.confidence}%</p>
-      <p><strong>Generated:</strong> {signal.timestamp}</p>
-
-      <div className="mt-4">
-        <iframe
-          src={`https://www.tradingview.com/widgetembed/?symbol=${symbolToTVFormat(
-            signal.symbol
-          )}&interval=15&hidesidetoolbar=1&theme=light`}
-          width="100%"
-          height="300"
-          frameBorder="0"
-          allowTransparency="true"
-          scrolling="no"
-          title="Chart Preview"
-        ></iframe>
-      </div>
     </div>
   );
 }
