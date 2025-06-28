@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 
-// Optional: map your asset symbols to TradingView symbols
+// TradingView chart mapping
 const symbolToTVFormat = (symbol) => {
   const map = {
     "Boom 1000": "OANDA:XAUUSD",
@@ -11,14 +11,31 @@ const symbolToTVFormat = (symbol) => {
     "Volatility 75 Index": "BINANCE:BTCUSDT",
     "Volatility 100 Index": "BINANCE:ETHUSDT"
   };
-  return map[symbol] || "OANDA:EURUSD"; // fallback
+  return map[symbol] || "OANDA:EURUSD";
+};
+
+// Deriv price feed mapping
+const mapToDerivSymbol = (symbol) => {
+  const map = {
+    "Boom 1000": "R_100",
+    "Boom 500": "R_50",
+    "Crash 1000": "R_100",
+    "Crash 500": "R_50",
+    "Volatility 75 Index": "R_75",
+    "Volatility 25 Index": "R_25",
+    "Volatility 10 Index": "R_10",
+    "Volatility 100 Index": "R_100"
+  };
+  return map[symbol] || "R_75";
 };
 
 function App() {
   const [signal, setSignal] = useState(null);
   const [history, setHistory] = useState([]);
-  const [symbol, setSymbol] = useState("Boom 1000");
+  const [symbol, setSymbol] = useState("Volatility 75 Index");
+  const [livePrice, setLivePrice] = useState(null);
   const [loading, setLoading] = useState(false);
+  const wsRef = useRef(null);
 
   const symbols = [
     "Boom 1000",
@@ -26,10 +43,46 @@ function App() {
     "Crash 1000",
     "Crash 500",
     "Volatility 75 Index",
+    "Volatility 25 Index",
+    "Volatility 10 Index",
     "Volatility 100 Index"
   ];
 
+  // ✅ Connect to Deriv WebSocket for live price feed
+  useEffect(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const derivSymbol = mapToDerivSymbol(symbol);
+    const ws = new WebSocket("wss://ws.derivws.com/websockets/v3");
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        ticks: derivSymbol,
+        subscribe: 1
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.tick) {
+        setLivePrice(data.tick.quote);
+      }
+    };
+
+    wsRef.current = ws;
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [symbol]);
+
   const fetchSignal = async () => {
+    if (!livePrice) return;
+
     setLoading(true);
     try {
       const response = await fetch("https://forex-chart-analyzer-1.onrender.com/generate-signal/", {
@@ -37,7 +90,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           symbol: symbol,
-          price: 2032
+          price: livePrice  // 🧠 use exact live price
         }),
       });
 
@@ -45,12 +98,12 @@ function App() {
 
       const newSignal = {
         ...data.signal,
-        timestamp: new Date().toLocaleString(), // 🕓 Add timestamp here
+        timestamp: new Date().toLocaleString()
       };
 
       if (data.signal) {
         setSignal(newSignal);
-        setHistory((prev) => [newSignal, ...prev.slice(0, 4)]); // Keep latest 5 signals
+        setHistory((prev) => [newSignal, ...prev.slice(0, 4)]);
       } else {
         setSignal(null);
       }
@@ -69,7 +122,7 @@ function App() {
       </h1>
 
       {/* 🔘 Symbol Dropdown */}
-      <div className="mb-4">
+      <div className="mb-2">
         <label className="mr-2 font-semibold">Select Symbol:</label>
         <select
           value={symbol}
@@ -84,10 +137,22 @@ function App() {
         </select>
       </div>
 
+      {/* 📡 Live Price */}
+      {livePrice && (
+        <p className="text-sm text-gray-600 mb-4">
+          🔴 Live Price: <span className="font-mono">{livePrice}</span>
+        </p>
+      )}
+
       {/* 🔄 Refresh Button */}
       <button
         onClick={fetchSignal}
-        className="mb-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        disabled={!livePrice}
+        className={`mb-6 px-6 py-2 rounded-lg transition ${
+          livePrice
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : "bg-gray-400 text-white cursor-not-allowed"
+        }`}
       >
         🔄 Refresh Signal
       </button>
@@ -117,7 +182,7 @@ function App() {
   );
 }
 
-// ✅ COMPONENT: Renders a single signal card with chart + timestamp
+// 📦 Signal Card Component
 function SignalCard({ signal }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 text-sm space-y-1">
@@ -132,7 +197,6 @@ function SignalCard({ signal }) {
       <p><strong>Confidence:</strong> {signal.confidence}%</p>
       <p><strong>Generated:</strong> {signal.timestamp}</p>
 
-      {/* 📈 Chart Preview */}
       <div className="mt-4">
         <iframe
           src={`https://www.tradingview.com/widgetembed/?symbol=${symbolToTVFormat(
