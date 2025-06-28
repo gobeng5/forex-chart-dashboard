@@ -1,32 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 
-// ✅ TradingView chart mapping (for display only)
+// ✅ TradingView chart mapping
 const symbolToTVFormat = (symbol) => {
   const map = {
-    "Boom 1000": "OANDA:XAUUSD",
-    "Boom 500": "OANDA:GBPUSD",
-    "Crash 1000": "OANDA:USDJPY",
-    "Crash 500": "OANDA:EURUSD",
     "Volatility 75 Index": "BINANCE:BTCUSDT",
-    "Volatility 25 Index": "BINANCE:ADAUSDT",
-    "Volatility 10 Index": "BINANCE:SANDUSDT",
-    "Volatility 100 Index": "BINANCE:ETHUSDT"
   };
-  return map[symbol] || "OANDA:EURUSD";
+  return map[symbol] || "BINANCE:BTCUSDT";
 };
 
-// ✅ Deriv WebSocket symbol mapping (real API feed)
+// ✅ Deriv WebSocket symbol mapping
 const mapToDerivSymbol = (symbol) => {
   const map = {
-    "Boom 1000": "BOOM1000",
-    "Boom 500": "BOOM500",
-    "Crash 1000": "CRASH1000",
-    "Crash 500": "CRASH500",
-    "Volatility 75 Index": "R_75",
-    "Volatility 25 Index": "R_25",
-    "Volatility 10 Index": "R_10",
-    "Volatility 100 Index": "R_100"
+    "Volatility 75 Index": "R_75", // ✅ this one always works
   };
   return map[symbol] || "R_75";
 };
@@ -39,18 +25,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const wsRef = useRef(null);
 
-  const symbols = [
-    "Boom 1000",
-    "Boom 500",
-    "Crash 1000",
-    "Crash 500",
-    "Volatility 75 Index",
-    "Volatility 25 Index",
-    "Volatility 10 Index",
-    "Volatility 100 Index"
-  ];
+  const symbols = ["Volatility 75 Index"];
 
-  // ✅ WebSocket for Deriv live prices
   useEffect(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -60,6 +36,7 @@ function App() {
     const ws = new WebSocket("wss://ws.derivws.com/websockets/v3");
 
     ws.onopen = () => {
+      console.log("🔌 Subscribing to Deriv symbol:", derivSymbol);
       ws.send(JSON.stringify({
         ticks: derivSymbol,
         subscribe: 1
@@ -67,11 +44,16 @@ function App() {
     };
 
     ws.onmessage = (event) => {
+      console.log("🛰️ Raw tick event:", event.data);
       const data = JSON.parse(event.data);
-      console.log("🛰️ Tick received:", data);
-      if (data.tick) {
+      if (data.tick && data.tick.quote) {
+        console.log("✅ Tick received:", data.tick.quote);
         setLivePrice(data.tick.quote);
       }
+    };
+
+    ws.onerror = (err) => {
+      console.error("❌ WebSocket error:", err);
     };
 
     wsRef.current = ws;
@@ -83,7 +65,6 @@ function App() {
     };
   }, [symbol]);
 
-  // 🔄 Fetch signal using live price
   const fetchSignal = async () => {
     if (!livePrice) {
       alert("Live price not available yet. Please wait a moment and try again.");
@@ -102,7 +83,6 @@ function App() {
       });
 
       const data = await response.json();
-
       const newSignal = {
         ...data.signal,
         timestamp: new Date().toLocaleString()
@@ -145,9 +125,13 @@ function App() {
       </div>
 
       {/* 📡 Live Price */}
-      {livePrice && (
+      {livePrice ? (
         <p className="text-sm text-gray-600 mb-4">
           🔴 Live Price: <span className="font-mono">{livePrice}</span>
+        </p>
+      ) : (
+        <p className="text-sm text-red-600 mb-4">
+          ⏳ Waiting for live price from Deriv...
         </p>
       )}
 
@@ -184,7 +168,7 @@ function App() {
   );
 }
 
-// 🧩 Reusable signal card component
+// ✅ Signal Card Component
 function SignalCard({ signal }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 text-sm space-y-1">
