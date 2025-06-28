@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 
-// TradingView chart mapping
+// 📊 TradingView chart symbol mapping
 const symbolToTVFormat = (symbol) => {
   const map = {
     "Boom 1000": "OANDA:XAUUSD",
@@ -9,12 +9,14 @@ const symbolToTVFormat = (symbol) => {
     "Crash 1000": "OANDA:USDJPY",
     "Crash 500": "OANDA:EURUSD",
     "Volatility 75 Index": "BINANCE:BTCUSDT",
+    "Volatility 25 Index": "BINANCE:ADAUSDT",
+    "Volatility 10 Index": "BINANCE:SANDUSDT",
     "Volatility 100 Index": "BINANCE:ETHUSDT"
   };
   return map[symbol] || "OANDA:EURUSD";
 };
 
-// Deriv price feed mapping
+// 🧠 Deriv WebSocket symbol mapping
 const mapToDerivSymbol = (symbol) => {
   const map = {
     "Boom 1000": "R_100",
@@ -48,7 +50,7 @@ function App() {
     "Volatility 100 Index"
   ];
 
-  // ✅ Connect to Deriv WebSocket for live price feed
+  // 📡 Connect to Deriv WebSocket on symbol change
   useEffect(() => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -80,8 +82,12 @@ function App() {
     };
   }, [symbol]);
 
+  // 🔄 Generate signal using live price
   const fetchSignal = async () => {
-    if (!livePrice) return;
+    if (!livePrice) {
+      alert("Live price not available yet. Please wait a moment and try again.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -90,7 +96,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           symbol: symbol,
-          price: livePrice  // 🧠 use exact live price
+          price: livePrice
         }),
       });
 
@@ -144,15 +150,10 @@ function App() {
         </p>
       )}
 
-      {/* 🔄 Refresh Button */}
+      {/* 🔄 Refresh Button (enabled always) */}
       <button
         onClick={fetchSignal}
-        disabled={!livePrice}
-        className={`mb-6 px-6 py-2 rounded-lg transition ${
-          livePrice
-            ? "bg-blue-600 text-white hover:bg-blue-700"
-            : "bg-gray-400 text-white cursor-not-allowed"
-        }`}
+        className="mb-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
       >
         🔄 Refresh Signal
       </button>
