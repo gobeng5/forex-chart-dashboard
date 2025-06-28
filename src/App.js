@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "./index.css";
 
 function App() {
   const [signal, setSignal] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchSignal = async () => {
     setLoading(true);
@@ -20,20 +20,24 @@ function App() {
       setSignal(data.signal);
     } catch (error) {
       console.error("Error fetching signal:", error);
+      setSignal(null);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSignal();
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-      <h1 className="text-3xl font-bold text-blue-600 mb-6">
+      <h1 className="text-3xl font-bold text-blue-600 mb-4">
         📈 AI Forex Signal Dashboard
       </h1>
+
+      <button
+        onClick={fetchSignal}
+        className="mb-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+      >
+        🔄 Refresh Signal
+      </button>
 
       {loading && <p className="text-gray-500">Fetching signal...</p>}
 
@@ -50,7 +54,7 @@ function App() {
           <p><strong>Confidence:</strong> {signal.confidence}%</p>
         </div>
       ) : (
-        !loading && <p className="text-red-500">No valid signal returned</p>
+        !loading && <p className="text-red-500">No signal available</p>
       )}
     </div>
   );
