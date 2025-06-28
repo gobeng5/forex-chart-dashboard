@@ -16,10 +16,18 @@ function App() {
           price: 2032
         }),
       });
+
       const data = await response.json();
-      setSignal(data.signal);
+      console.log("🚀 Raw API response:", data); // For debugging
+
+      if (data && data.signal) {
+        setSignal(data.signal);
+      } else {
+        console.warn("⚠️ No signal in response:", data);
+        setSignal(null);
+      }
     } catch (error) {
-      console.error("Error fetching signal:", error);
+      console.error("❌ API call failed:", error);
       setSignal(null);
     } finally {
       setLoading(false);
@@ -28,8 +36,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-      <h1 className="text-3xl font-bold text-blue-600 mb-4">
-        📈 AI Forex Signal Dashboard
+      <h1 className="text-3xl font-bold text-blue-600 mb-4 flex items-center gap-2">
+        <img src="https://img.icons8.com/fluency/32/combo-chart.png" alt="chart" />
+        AI Forex Signal Dashboard
       </h1>
 
       <button
